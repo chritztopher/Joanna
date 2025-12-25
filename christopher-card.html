@@ -228,6 +228,104 @@
             transform: scale(0.98);
         }
 
+        /* Gyro Permission Screen */
+        .gyro-permission {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2d3436;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 998;
+            padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s ease;
+        }
+
+        .gyro-permission.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .gyro-container {
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .gyro-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: tilt 2s ease-in-out infinite;
+        }
+
+        @keyframes tilt {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+        }
+
+        .gyro-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.5rem;
+            font-style: italic;
+            color: #ffeaa7;
+            margin-bottom: 15px;
+        }
+
+        .gyro-text {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .gyro-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .gyro-btn {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .gyro-btn--yes {
+            background: #ffeaa7;
+            color: #2d3436;
+        }
+
+        .gyro-btn--yes:active {
+            background: #fff3b0;
+            transform: scale(0.98);
+        }
+
+        .gyro-btn--skip {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gyro-btn--skip:active {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         /* Main content (hidden initially) */
         main {
             background: #2d3436;
@@ -495,6 +593,19 @@
         </div>
     </div>
 
+    <!-- Gyro Permission Screen -->
+    <div class="gyro-permission" id="gyro-permission">
+        <div class="gyro-container">
+            <div class="gyro-icon">📱</div>
+            <h2 class="gyro-title">Enable tilt effects?</h2>
+            <p class="gyro-text">Tilt your phone to make the cards move and shine! This requires motion sensor access.</p>
+            <div class="gyro-buttons">
+                <button class="gyro-btn gyro-btn--yes" id="gyro-yes">Yes, enable tilt!</button>
+                <button class="gyro-btn gyro-btn--skip" id="gyro-skip">Skip for now</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main id="main-content">
         <div class="cards-wrapper" id="cards-wrapper" data-active="0">
@@ -533,7 +644,14 @@
         const agreementEl = document.getElementById('agreement');
         const agreeCheckbox = document.getElementById('agree-checkbox');
         const agreeBtn = document.getElementById('agree-btn');
+        const gyroPermissionEl = document.getElementById('gyro-permission');
+        const gyroYesBtn = document.getElementById('gyro-yes');
+        const gyroSkipBtn = document.getElementById('gyro-skip');
         const mainEl = document.getElementById('main-content');
+
+        // Check if device needs gyro permission (iOS 13+)
+        const needsGyroPermission = typeof DeviceOrientationEvent !== 'undefined'
+            && typeof DeviceOrientationEvent.requestPermission === 'function';
 
         let currentMessage = 0;
         let charIndex = 0;
@@ -616,72 +734,102 @@
             }
         });
 
-        // Agreement button handler - show cards
+        // Agreement button handler - check for gyro permission or show cards
         agreeBtn.addEventListener('click', () => {
             if (!agreeCheckbox.checked) return;
 
             agreementEl.classList.remove('visible');
 
             setTimeout(() => {
-                mainEl.classList.add('visible');
+                // Check if we need to ask for gyro permission (iOS)
+                if (needsGyroPermission) {
+                    gyroPermissionEl.classList.add('visible');
+                } else {
+                    // No permission needed, show cards directly
+                    showCards();
+                }
+            }, 800);
+        });
 
-                // Card 1 - DrJo
-                const container1 = document.getElementById('card-1');
-                const card1 = new PokemonCard(container1, {
-                    id: "custom-001",
+        // Gyro permission - Yes button
+        gyroYesBtn.addEventListener('click', async () => {
+            try {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                console.log('Gyro permission:', permission);
+            } catch (e) {
+                console.log('Gyro permission error:', e);
+            }
+
+            gyroPermissionEl.classList.remove('visible');
+            setTimeout(showCards, 800);
+        });
+
+        // Gyro permission - Skip button
+        gyroSkipBtn.addEventListener('click', () => {
+            gyroPermissionEl.classList.remove('visible');
+            setTimeout(showCards, 800);
+        });
+
+        // Show cards function
+        function showCards() {
+            mainEl.classList.add('visible');
+
+            // Card 1 - DrJo
+            const container1 = document.getElementById('card-1');
+            const card1 = new PokemonCard(container1, {
+                id: "custom-001",
+                set: "custom",
+                name: "Jo Katherine",
+                supertype: "Pokémon",
+                subtypes: ["Basic"],
+                types: ["Psychic"],
+                number: "001",
+                rarity: "Rare Rainbow",
+                img: "/assets/cards/DrJo.webp",
+                showcase: true
+            });
+
+            // Card 2 - JoSquared
+            const container2 = document.getElementById('card-2');
+            setTimeout(() => {
+                const card2 = new PokemonCard(container2, {
+                    id: "custom-002",
                     set: "custom",
-                    name: "Jo Katherine",
+                    name: "Jo Squared",
                     supertype: "Pokémon",
                     subtypes: ["Basic"],
                     types: ["Psychic"],
-                    number: "001",
+                    number: "002",
                     rarity: "Rare Rainbow",
-                    img: "/assets/cards/DrJo.webp",
+                    img: "/assets/cards/JoSquared.webp",
                     showcase: true
                 });
+                window.card2 = card2;
+            }, 400);
 
-                // Card 2 - JoSquared
-                const container2 = document.getElementById('card-2');
-                setTimeout(() => {
-                    const card2 = new PokemonCard(container2, {
-                        id: "custom-002",
-                        set: "custom",
-                        name: "Jo Squared",
-                        supertype: "Pokémon",
-                        subtypes: ["Basic"],
-                        types: ["Psychic"],
-                        number: "002",
-                        rarity: "Rare Rainbow",
-                        img: "/assets/cards/JoSquared.webp",
-                        showcase: true
-                    });
-                    window.card2 = card2;
-                }, 400);
-
-                // Card 3 - MiniME (with cosmos texture)
-                const container3 = document.getElementById('card-3');
-                setTimeout(() => {
-                    const card3 = new PokemonCard(container3, {
-                        id: "custom-003",
-                        set: "custom",
-                        name: "Mini Me",
-                        supertype: "Pokémon",
-                        subtypes: ["Basic"],
-                        types: ["Psychic"],
-                        number: "003",
-                        rarity: "Rare Rainbow",
-                        img: "/assets/cards/MiniME.webp",
-                        showcase: true
-                    });
-                    window.card3 = card3;
-                }, 800);
-
-                window.card1 = card1;
-
-                // Mobile carousel navigation
-                setupMobileNav();
+            // Card 3 - MiniME (with cosmos texture)
+            const container3 = document.getElementById('card-3');
+            setTimeout(() => {
+                const card3 = new PokemonCard(container3, {
+                    id: "custom-003",
+                    set: "custom",
+                    name: "Mini Me",
+                    supertype: "Pokémon",
+                    subtypes: ["Basic"],
+                    types: ["Psychic"],
+                    number: "003",
+                    rarity: "Rare Rainbow",
+                    img: "/assets/cards/MiniME.webp",
+                    showcase: true
+                });
+                window.card3 = card3;
             }, 800);
-        });
+
+            window.card1 = card1;
+
+            // Mobile carousel navigation
+            setupMobileNav();
+        }
 
         // Mobile carousel functionality
         function setupMobileNav() {
