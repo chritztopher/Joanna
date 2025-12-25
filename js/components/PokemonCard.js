@@ -272,8 +272,8 @@ export class PokemonCard {
       x: adjust(percent.x, 0, 100, 37, 63),
       y: adjust(percent.y, 0, 100, 33, 67),
     }, {
-      x: round(-(center.x / 6)),
-      y: round(center.y / 4),
+      x: round(-(center.x / 10)),
+      y: round(center.y / 7),
     }, {
       x: round(percent.x),
       y: round(percent.y),
@@ -380,7 +380,7 @@ export class PokemonCard {
   orientate(e) {
     const x = e.relative.gamma;
     const y = e.relative.beta;
-    const limit = { x: 16, y: 18 };
+    const limit = { x: 10, y: 12 };
 
     const degrees = {
       x: clamp(x, -limit.x, limit.x),
